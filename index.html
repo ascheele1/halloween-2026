@@ -163,6 +163,20 @@
     transition:opacity .6s ease}
   .hint.gone{opacity:0}
 
+  /* scroll cue */
+  .cue{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:50;
+    transform:translate(-50%,16px);opacity:0;pointer-events:none;
+    display:inline-flex;align-items:center;gap:.5rem;padding:.6rem 1.1rem .6rem 1.2rem;min-height:44px;white-space:nowrap;
+    font:inherit;font-size:1.05rem;color:var(--bone);cursor:pointer;
+    background:rgba(12,16,11,.78);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    border:1px solid rgba(240,168,76,.45);border-radius:999px;
+    box-shadow:0 0 18px rgba(240,168,76,.22),0 8px 24px rgba(0,0,0,.55);
+    transition:opacity .5s ease,transform .5s ease}
+  .cue.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  .cue svg{width:16px;height:16px;flex:none;animation:nudge 1.8s ease-in-out infinite}
+  .cue:focus-visible{outline:2px solid var(--ember);outline-offset:3px}
+  @keyframes nudge{0%,100%{transform:translateY(-2px)}50%{transform:translateY(3px)}}
+
   /* ---------- details ---------- */
   .details{padding:2.2rem 1.5rem 1rem;text-align:center}
   .when{font-size:clamp(1.6rem,7vw,2.1rem);line-height:1.15;margin:0;font-weight:400;letter-spacing:.01em}
@@ -212,6 +226,7 @@
     .art.awake .drop{animation:none}
     .drop .hip,.drop .knee,.drop .torso,.art.awake .drop .tuck,.art.awake .drop .sway{animation:none!important}
     .planchette{transition:none}
+    .cue svg{animation:none}
   }
 </style>
 </head>
@@ -246,6 +261,8 @@
     </div>
   </div>
   <p class="hint" id="hint">Tap the invitation to wake the bayou.</p>
+  <button class="cue" id="cue" type="button">Details &amp; RSVP below
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6"/></svg></button>
 
   <section class="details">
     <h1 class="when">Friday, October 30 at 7:30 pm</h1>
@@ -327,17 +344,18 @@ const PARTY = {
     document.querySelectorAll('.answer').forEach(a => a.classList.toggle('chosen', a === el));
     $('said').textContent = label;
   }
-  const pick = (el, key, label) => el.addEventListener('click', () => {
-    moveTo(el, label);
-    try { localStorage.setItem('bayou-rsvp', key); } catch(e){}
-  });
-  pick($('yes'), 'yes', 'See you in the swamp.');
-  pick($('no'),  'no',  'The bayou will miss you.');
-  try {
-    const prev = localStorage.getItem('bayou-rsvp');
-    if (prev) requestAnimationFrame(() => prev === 'yes'
-      ? moveTo($('yes'), 'See you in the swamp.') : moveTo($('no'), 'The bayou will miss you.'));
-  } catch(e){}
+  const pick = (el, label) => el.addEventListener('click', () => moveTo(el, label));
+  pick($('yes'), 'See you in the swamp.');
+  pick($('no'),  'The bayou will miss you.');
+
+  // Scroll cue: shows until the details come into view, tapping it jumps to them
+  const cue = $('cue'), details = document.querySelector('.details');
+  let cueReady = false, detailsSeen = false;
+  const syncCue = () => cue.classList.toggle('show', cueReady && !detailsSeen);
+  setTimeout(() => { cueReady = true; syncCue(); }, 1400);
+  new IntersectionObserver(([e]) => { detailsSeen = e.isIntersecting; syncCue(); },
+    {rootMargin:'0px 0px -35% 0px'}).observe(details);
+  cue.addEventListener('click', () => details.scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block:'start'}));
 
   // Fireflies: more of them, wandering further, blinking like the real thing
   const flies = $('flies');
