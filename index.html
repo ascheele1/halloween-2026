@@ -352,7 +352,12 @@ const PARTY = {
   const cue = $('cue'), details = document.querySelector('.details');
   let cueReady = false, detailsSeen = false;
   const syncCue = () => cue.classList.toggle('show', cueReady && !detailsSeen);
-  setTimeout(() => { cueReady = true; syncCue(); }, 1400);
+  // wait long enough for people to find the tap, and never show it mid-animation
+  let cueTimer = setTimeout(() => { cueReady = true; syncCue(); }, 5000);
+  window.__holdCue = () => {
+    clearTimeout(cueTimer); cueReady = false; syncCue();
+    cueTimer = setTimeout(() => { cueReady = true; syncCue(); }, 4600);
+  };
   new IntersectionObserver(([e]) => { detailsSeen = e.isIntersecting; syncCue(); },
     {rootMargin:'0px 0px -35% 0px'}).observe(details);
   cue.addEventListener('click', () => details.scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block:'start'}));
@@ -402,6 +407,7 @@ const PARTY = {
   function wake(){
     if (busy) return; busy = true;
     $('hint').classList.add('gone');
+    if (window.__holdCue) window.__holdCue();
     art.classList.remove('awake'); void art.offsetWidth; art.classList.add('awake');
     if (navigator.vibrate) { try { navigator.vibrate([18, 60, 30]); } catch(e){} }
     bugs.forEach((b,i) => b.animate([
